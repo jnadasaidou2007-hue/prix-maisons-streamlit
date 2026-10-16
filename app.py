@@ -1,109 +1,61 @@
 import streamlit as st
 import pandas as pd
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import mean_absolute_error, r2_score
 
-st.set_page_config(
-    page_title="Prédiction de réussite",
-    page_icon="🎓"
-)
+st.set_page_config(page_title="Estimation immobilière", page_icon="🏠")
+st.title("Estimation du prix d'une maison")
+st.write("Projet pédagogique de régression linéaire")
 
-st.title("🎓 Prédiction de réussite d'un étudiant")
-st.write("Application simple de Machine Learning")
-
-# 1. Création des données d'exemple
+# Données fictives, prix en milliers de dirhams
 data = pd.DataFrame({
-    "heures_revision": [
-        1, 2, 1, 3, 2, 4, 5, 6, 4, 7,
-        8, 6, 9, 3, 5, 8, 2, 7, 9, 10
-    ],
-    "absences": [
-        10, 8, 12, 6, 9, 5, 3, 2, 5, 1,
-        0, 3, 1, 8, 4, 0, 11, 2, 0, 1
-    ],
-    "note_precedente": [
-        8, 9, 7, 10, 9, 12, 14, 15, 11, 16,
-        17, 14, 18, 8, 13, 17, 7, 15, 19, 18
-    ],
-    "reussite": [
-        0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
-        1, 1, 1, 0, 1, 1, 0, 1, 1, 1
-    ]
+    "superficie": [50, 60, 70, 80, 90, 100, 110, 120],
+    "chambres": [1, 2, 2, 3, 3, 3, 4, 4],
+    "anciennete": [20, 15, 12, 10, 8, 5, 4, 2],
+    "prix": [400, 480, 530, 650, 700, 820, 850, 960]
 })
 
-# 2. Séparation des variables
-X = data[[
-    "heures_revision",
-    "absences",
-    "note_precedente"
-]]
-y = data["reussite"]
+st.subheader("1. Explorer les données")
+st.dataframe(data, use_container_width=True)
 
-# 3. Séparation entraînement / test
+st.subheader("2. Statistiques descriptives")
+st.write(data.describe())
+
+X = data[["superficie", "chambres", "anciennete"]]
+y = data["prix"]
+
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
-    test_size=0.25,
-    random_state=42,
-    stratify=y
+    X, y, test_size=0.25, random_state=42
 )
 
-# 4. Entraînement du modèle
-model = DecisionTreeClassifier(
-    max_depth=3,
-    random_state=42
-)
+model = LinearRegression()
 model.fit(X_train, y_train)
 
-# 5. Évaluation du modèle
 y_pred = model.predict(X_test)
-accuracy = accuracy_score(y_test, y_pred)
+mae = mean_absolute_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
 
-st.metric("Exactitude sur le jeu de test",
-          f"{accuracy:.0%}")
+col1, col2 = st.columns(2)
+col1.metric("Erreur absolue moyenne", f"{mae:.1f} kDH")
+col2.metric("Score R² sur le test", f"{r2:.2f}")
 
-st.divider()
-st.subheader("Tester un étudiant")
+st.subheader("3. Estimer une maison")
+superficie = st.slider("Superficie (m²)", 30, 200, 85)
+chambres = st.slider("Nombre de chambres", 1, 6, 3)
+anciennete = st.slider("Ancienneté (années)", 0, 50, 10)
 
-heures = st.slider(
-    "Heures de révision par jour",
-    0, 12, 4
-)
-
-absences = st.slider(
-    "Nombre d'absences",
-    0, 20, 3
-)
-
-note = st.slider(
-    "Note précédente sur 20",
-    0, 20, 12
-)
-
-if st.button("Prédire"):
-    nouvel_etudiant = pd.DataFrame([{
-        "heures_revision": heures,
-        "absences": absences,
-        "note_precedente": note
+if st.button("Estimer le prix"):
+    maison = pd.DataFrame([{
+        "superficie": superficie,
+        "chambres": chambres,
+        "anciennete": anciennete
     }])
-
-    prediction = model.predict(nouvel_etudiant)[0]
-    probabilites = model.predict_proba(
-        nouvel_etudiant
-    )[0]
-
-    st.write(
-        f"Probabilité estimée de réussite : "
-        f"{probabilites[1]:.0%}"
-    )
-
-    if prediction == 1:
-        st.success("Le modèle prédit une réussite.")
-    else:
-        st.warning("Le modèle prédit un risque d'échec.")
+    prix = model.predict(maison)[0]
+    st.success(f"Prix estimé : {prix:.1f} milliers de DH")
+    st.caption(f"Soit environ {prix * 1000:,.0f} DH.")
 
 st.caption(
-    "Projet pédagogique : les données sont fictives. "
-    "Les prédictions ne sont pas fiables pour une "
-    "décision réelle sans données représentatives."
+    "Données fictives et très limitées : estimation uniquement pédagogique, "
+    "à ne pas utiliser pour une transaction immobilière."
 )
